@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Elevation Profile</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style>
+        html, body, #map {
+            height:100%;
+            width:100%;
+            padding:0;
+            margin:0;
+        }
+        .controls {
+            position: absolute;
+            left: 6px;
+            bottom: 25px;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            font: bold 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
+            color: black;
+            opacity: 0.8;
+        }
+        .button {
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #000;
+            padding: 3px 5px 3px 5px;
+            margin: 2px 2px 0 0;
+            cursor: pointer;
+        }
+        .dropdown {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+        }
+        .dropdown-content {
+            display: none;
+            flex-direction: column;
+            background-color: #f1f1f1;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        }
+        .dropdown-content span {
+            color: black;
+            padding: 2px 5px;
+            cursor: pointer;
+        }
+        .dropdown-content span:hover, .dropdown-item-selected {
+            background-color: #ddd;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@tmcw/togeojson@4.2.0/dist/togeojson.umd.js"></script>
+    <script src="geo-data-exchange-1_1_0.js"></script>
+    <link rel="stylesheet" href="L.Control.Heightgraph.min.css"/>
+    <script type="text/javascript" src="L.Control.Heightgraph.min.js"></script>
+</head>
+<body onload="init()">
+    <div id="map"></div>
+    <div class="controls">
+        <div class="dropdown">
+            <span id="dropdown-button" class="button" title="Change the map provider">Provider:</span>
+            <div id="dropdown-content" class="dropdown-content">
+                <span>openstreetmap.fr</span>
+                <span>cyclosm.openstreetmap.fr</span>
+                <span>openstreetmap.de</span>
+                <span>openstreetmap.org</span>
+            </div>
+        </div>
+
+        <input id="file" style="display: none" type="file" accept=".gpx,.kml,.tcx" name="Upload" />
+        <div id="file-trigger" class="button" title="Upload track(s) in GPX, KML or TCX (may not work) format">Upload</div>
+    </div>
+</body>
+<script type="text/javascript" src="index.js">
+</script>
+</html>
