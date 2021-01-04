@@ -58,69 +58,109 @@ var options = {
 
 var osmProviders = {
     "openstreetmap.fr": {
+        name: "openstreetmap.fr",
         url: "https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png",
         shortName: "osm.fr"
     },
     "cyclosm.openstreetmap.fr": {
+        name: "cyclosm.openstreetmap.fr",
         url: "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
         shortName: "cyclosm.fr"
     },
     "openstreetmap.de": {
+        name: "openstreetmap.de",
         url: "https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png",
         shortName: "osm.de"
     },
     "openstreetmap.org": {
+        name: "openstreetmap.org",
         url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         shortName: "osm.org"
     }
 };
 
 
+function getQueryParam(param, defaultValue) {
+    var value = defaultValue;
+    // no need for url decoding
+    window.location.search.substr(1).split("&").forEach(function(item) {
+        if (param === item.split("=")[0]) {
+            value = item.split("=")[1];
+        }
+    });
+    return value;
+};
+
+
+// check if we are in "print" mode (i.e. show only the map or the elevation chart, with no controls)
+var printMode = getQueryParam("printMode");
+var mapProvider = getQueryParam("mapProvider", "openstreetmap.fr");
+
+
 // init map
 
-var map = new L.Map("map");
-var osmProvider = osmProviders["openstreetmap.fr"];
-var attr = "<a href=\"https://openstreetmap.org\">OpenStreetMap</a>"
-        + " | <a href=\"privacypolicy.html\" target=\"privacypolicy\">Privacy policy</a>";
-
+var mapOptions = printMode === "map"
+        ? {
+            attributionControl: false,
+            fadeAnimation: false,
+            zoomAnimation: false,
+            zoomControl: false
+        }
+        : {};
+var map = new L.Map("map", mapOptions);
+var osmProvider = osmProviders[mapProvider]; // use the default provider for start
 var openstreetmap = L.tileLayer(
-    osmProvider.url,
-    {
-        id: "openstreetmap",
-        attribution: attr
-    }
+        osmProvider.url,
+        {
+            id: "openstreetmap",
+            attribution: '<a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+                + ' | <a href="privacypolicy.html" target="privacypolicy">Privacy policy</a>'
+        }
 );
 
-var bounds = new L.LatLngBounds(
-    new L.LatLng(61.957, -129.771),
-    new L.LatLng(37.692, -73.477)
-);
-map.addLayer(openstreetmap).fitBounds(bounds)
+{
+    var northEastLat = Number(getQueryParam("bounds.northeast.lat", "61.957"));
+    var northEastLng = Number(getQueryParam("bounds.northeast.lng", "-73.477"));
+    var southWestLat = Number(getQueryParam("bounds.southwest.lat", "37.692"));
+    var southWestLng = Number(getQueryParam("bounds.southwest.lng", "-129.771"));
+    var bounds = new L.LatLngBounds(
+        new L.LatLng(northEastLat, northEastLng),
+        new L.LatLng(southWestLat, southWestLng)
+    );
+    map.addLayer(openstreetmap).fitBounds(bounds);
+}
 
 var displayGroup = new L.LayerGroup();
 displayGroup.addTo(map);
 
-L.control.scale({ metric: true, imperial: false }).addTo(map);
+if (printMode !== "map") {
+    L.control.scale({ metric: true, imperial: false }).addTo(map);
+}
 
 
 // init heightgraph
+var hg;
+if (printMode !== "map") {
+    hg = L.control.heightgraph(options);
+    hg.addTo(map)
+    // initialize with empty data
+    hg.addData([]);
 
-var hg = L.control.heightgraph(options);
-hg.addTo(map)
-// initialize with empty data
-hg.addData([]);
+    hg.resize({width:1000,height:300})
 
-hg.resize({width:1000,height:300})
-
-var onRoute = function(event) {
-    hg.mapMousemoveHandler(event, {showMapMarker:true})
-}
-var outRoute = function(event) {
-    hg.mapMouseoutHandler(1000)
+    var onRoute = function(event) {
+        hg.mapMousemoveHandler(event, {showMapMarker:true})
+    }
+    var outRoute = function(event) {
+        hg.mapMouseoutHandler(1000)
+    }
 }
 
 
 function changeData(geojson) {
+    // save to session storage
+    sessionStorage.setItem("geojson", JSON.stringify(geojson));
+   
     displayGroup.clearLayers();
 
     if (geojson.length !== 0) {
@@ -197,6 +237,9 @@ function changeHeightgraphData(geojson) {
         hg._resetDrag();
     }
 
+    // save to session storage
+    sessionStorage.setItem("elevationFeatures", JSON.stringify(elevationFeatures));
+
     hg.addData(elevationFeatures);
 }
 
@@ -230,8 +273,8 @@ function handleFileContent(extension, content) {
     }
 }
 
-function dropdownToggle() {
-    var dropdownContent = document.getElementById("dropdown-content");
+function providerDropdownToggle() {
+    var dropdownContent = document.getElementById("provider-dropdown-content");
 
     if (dropdownContent.style.display === "flex") {
         // hide the dropdown
@@ -239,15 +282,17 @@ function dropdownToggle() {
     }
     else {
         // mark the selected item and unmark the rest
-        document.querySelectorAll("div.dropdown-content > span").forEach(function(providerItem) {
-            var providerName = providerItem.innerText;
-            if (osmProviders[providerName] === osmProvider) {
-                providerItem.classList.add("dropdown-item-selected");
+        dropdownContent.querySelectorAll("span").forEach(
+            function(providerItem) {
+                var providerName = providerItem.innerText;
+                if (providerName === osmProvider.name) {
+                    providerItem.classList.add("dropdown-item-selected");
+                }
+                else {
+                    providerItem.classList.remove("dropdown-item-selected");
+                }
             }
-            else {
-                providerItem.classList.remove("dropdown-item-selected");
-            }
-        })
+        );
         
         // show the dropdown
         dropdownContent.style.display = "flex";
@@ -264,7 +309,35 @@ function setProvider(provider) {
     updateProviderButton();
 }
 function updateProviderButton() {
-    document.getElementById("dropdown-button").innerHTML = "Provider: " + osmProvider.shortName;
+    document.getElementById("provider-dropdown-button").innerHTML =
+            "Provider: " + osmProvider.shortName + " &gt;";
+}
+function printDropdownToggle() {
+    var dropdownContent = document.getElementById("print-dropdown-content");
+
+    if (dropdownContent.style.display === "flex") {
+        // hide the dropdown
+        dropdownContent.style.display = "none";
+    }
+    else {
+        // show the dropdown
+        dropdownContent.style.display = "flex";
+    }
+}
+function print(element) {
+    var printMode = element.toLowerCase();
+    if (printMode === "map") {
+        // TODO select map size
+        window.open(
+                "index.html"
+                        + "?printMode=" + printMode
+                        + "&mapProvider=" + osmProvider.name
+                        + "&bounds.northeast.lat=" + map.getBounds().getNorthEast().lat
+                        + "&bounds.northeast.lng=" + map.getBounds().getNorthEast().lng
+                        + "&bounds.southwest.lat=" + map.getBounds().getSouthWest().lat
+                        + "&bounds.southwest.lng=" + map.getBounds().getSouthWest().lng,
+                "print-map");
+    }
 }
 function init() {
     var file = document.getElementById("file");
@@ -276,18 +349,38 @@ function init() {
     );
     file.addEventListener("change", handleFileSelect);
 
-    document.querySelectorAll("div.dropdown-content > span").forEach(function(providerItem) {
-        providerItem.addEventListener(
-            "click",
-            function() {
-                setProvider(providerItem.innerText);
-                dropdownToggle();
-            }
-        );
-    });
-
-    document.getElementById("dropdown-button").addEventListener("click", dropdownToggle);
+    document.getElementById("provider-dropdown-content").querySelectorAll("span").forEach(
+        function(providerItem) {
+            providerItem.addEventListener(
+                "click",
+                function() {
+                    setProvider(providerItem.innerText);
+                    providerDropdownToggle();
+                }
+            );
+        }
+    );
+    document.getElementById("provider-dropdown-button").addEventListener("click", providerDropdownToggle);
     updateProviderButton();
+
+    document.getElementById("print-dropdown-content").querySelectorAll("span").forEach(
+        function(providerItem) {
+            providerItem.addEventListener(
+                "click",
+                function() {
+                    print(providerItem.innerText);
+                    printDropdownToggle();
+                }
+            );
+        }
+    );
+    document.getElementById("print-dropdown-button").addEventListener("click", printDropdownToggle);
+
+    if (printMode !== "map") {
+        document.querySelector(".controls").style.display = "flex";
+    }
+
+    // TODO load track from sessionStorage and show it on map
 }
 
 function handleFileSelect(event) {

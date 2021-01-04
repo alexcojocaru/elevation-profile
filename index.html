@@ -16,7 +16,7 @@
             left: 6px;
             bottom: 25px;
             z-index: 1001;
-            display: flex;
+            display: none; /* will change to flex after page load */
             flex-direction: column;
             align-items: flex-start;
             font: bold 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
@@ -28,7 +28,7 @@
             border-radius: 4px;
             background-color: #fff;
             color: #000;
-            padding: 3px 5px 3px 5px;
+            padding: 3px 5px;
             margin: 2px 2px 0 0;
             cursor: pointer;
         }
@@ -39,13 +39,14 @@
         }
         .dropdown-content {
             display: none;
-            flex-direction: column;
+            flex-direction: row;
             background-color: #f1f1f1;
             box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
         }
         .dropdown-content span {
             color: black;
-            padding: 2px 5px;
+            padding: 3px 5px;
+            margin: 2px;
             cursor: pointer;
         }
         .dropdown-content span:hover, .dropdown-item-selected {
@@ -74,8 +75,8 @@
     <div id="map"></div>
     <div class="controls">
         <div class="dropdown">
-            <span id="dropdown-button" class="button" title="Change the map provider">Provider:</span>
-            <div id="dropdown-content" class="dropdown-content">
+            <span id="provider-dropdown-button" class="button" title="Change the map provider">Provider &gt;</span>
+            <div id="provider-dropdown-content" class="dropdown-content">
                 <span>openstreetmap.fr</span>
                 <span>cyclosm.openstreetmap.fr</span>
                 <span>openstreetmap.de</span>
@@ -83,8 +84,16 @@
             </div>
         </div>
 
-        <input id="file" style="display: none" type="file" accept=".gpx,.kml,.tcx" name="Upload" />
-        <div id="file-trigger" class="button" title="Upload track(s) in GPX, KML or TCX (may not work) format">Upload</div>
+        <input id="file" style="display: none" type="file" accept=".gpx,.kml,.tcx" name="Upload track" />
+        <div id="file-trigger" class="button" title="Upload track(s) in GPX, KML or TCX (may not work) format">Upload track</div>
+
+        <div class="dropdown">
+            <div id="print-dropdown-button" class="button">Print &gt;</div>
+            <div id="print-dropdown-content" class="dropdown-content">
+                <span>Map</span>
+                <span>Elevation chart</span>
+            </div>
+        </div>
     </div>
 </body>
 <script type="text/javascript" src="index.js"></script>
