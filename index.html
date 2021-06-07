@@ -49,8 +49,12 @@
             margin: 2px;
             cursor: pointer;
         }
-        .dropdown-content span:hover, .dropdown-item-selected {
+        .dropdown-content span.hover:hover, .dropdown-item-selected {
             background-color: #ddd;
+        }
+        input {
+            border: 1px solid black;
+            vertical-align: middle;
         }
         /*
          * Heightgraph customizations;
@@ -77,10 +81,10 @@
         <div class="dropdown">
             <span id="provider-dropdown-button" class="button" title="Change the map provider">Provider &gt;</span>
             <div id="provider-dropdown-content" class="dropdown-content">
-                <span>openstreetmap.fr</span>
-                <span>cyclosm.openstreetmap.fr</span>
-                <span>openstreetmap.de</span>
-                <span>openstreetmap.org</span>
+                <span class="hover">openstreetmap.fr</span>
+                <span class="hover">cyclosm.openstreetmap.fr</span>
+                <span class="hover">openstreetmap.de</span>
+                <span class="hover">openstreetmap.org</span>
             </div>
         </div>
 
@@ -90,8 +94,16 @@
         <div class="dropdown">
             <div id="print-dropdown-button" class="button">Print &gt;</div>
             <div id="print-dropdown-content" class="dropdown-content">
-                <span>Map</span>
-                <span>Elevation chart</span>
+                <span class="hover">Map &gt;</span>
+                <span class="hover">Elevation chart &gt;</span>
+            </div>
+            <div id="print-size-dropdown-content" class="dropdown-content">
+                <span class="size hover">Small</span>
+                <span class="size hover">Medium</span>
+                <span class="size hover">Large</span>
+                <span>width: <input type="text" value="1600" pattern="[0-9]{3,5}" size="5" minlength="3" maxlength="5" id="printWidth" /> px</span>
+                <span>height: <input type="text" value="1200" pattern="[0-9]{3,5}" size="5" minlength="3" maxlength="5" id="printHeight" /> px</span>
+                <span class="action hover">Go</span>
             </div>
         </div>
     </div>

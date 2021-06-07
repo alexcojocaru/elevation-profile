@@ -1,4 +1,4 @@
-var options = {
+var heightgraphOptions = {
     mappings: {
         gradient: {
             "-5": {
@@ -79,6 +79,17 @@ var osmProviders = {
     }
 };
 
+var providerDropdownButton;
+var providerDropdownContent;
+
+var printDropdownButton;
+var printDropdownContent;
+var printSizeDropdownContent;
+var printWidth;
+var printHeight;
+
+var printElement;
+
 
 function getQueryParam(param, defaultValue) {
     var value = defaultValue;
@@ -133,16 +144,53 @@ var openstreetmap = L.tileLayer(
 var displayGroup = new L.LayerGroup();
 displayGroup.addTo(map);
 
-if (printMode !== "map") {
-    L.control.scale({ metric: true, imperial: false }).addTo(map);
-}
 
-
-// init heightgraph
+var mapNode = document.getElementById("map");
+var hgNode = document.querySelector(".heightgraph-container");
 var hg;
-if (printMode !== "map") {
-    hg = L.control.heightgraph(options);
-    hg.addTo(map)
+if (printMode === "map") {
+    var width = parseInt(getQueryParam("printWidth", "1600"));
+    var height = parseInt(getQueryParam("printHeight", "1200"));
+
+    mapNode.style.width = width + "px";
+    mapNode.style.height = height + "px";
+    map.invalidateSize();
+
+    var geojsonAsJson = sessionStorage.getItem("geojson");
+    if (geojsonAsJson) {
+        changeData(JSON.parse(geojsonAsJson));
+    }
+}
+else if (printMode === "elevationchart") {
+    var width = parseInt(getQueryParam("printWidth", "1600"));
+    var height = parseInt(getQueryParam("printHeight", "400"));
+
+    hg = L.control.heightgraph(heightgraphOptions);
+    hg.addTo(map);
+    var elevationFeaturesAsJson = sessionStorage.getItem("elevationFeatures");
+    if (elevationFeaturesAsJson) {
+        hg.addData(JSON.parse(elevationFeaturesAsJson));
+    }
+    else {
+        hg.addData([]);
+    }
+
+    hg.resize({width:width,height:height})
+    hg._expand();
+
+    // move the heightgraph chart outside of the map node
+    var hgNode = document.querySelector(".heightgraph-container");
+    document.body.appendChild(hgNode);
+   
+    // hide the map
+    mapNode.style.display = "none";
+}
+else {
+    L.control.scale({ metric: true, imperial: false }).addTo(map);
+    document.querySelector(".controls").style.display = "flex";
+
+    hg = L.control.heightgraph(heightgraphOptions);
+    hg.addTo(map);
     // initialize with empty data
     hg.addData([]);
 
@@ -154,6 +202,8 @@ if (printMode !== "map") {
     var outRoute = function(event) {
         hg.mapMouseoutHandler(1000)
     }
+
+    sessionStorage.clear();
 }
 
 
@@ -274,15 +324,13 @@ function handleFileContent(extension, content) {
 }
 
 function providerDropdownToggle() {
-    var dropdownContent = document.getElementById("provider-dropdown-content");
-
-    if (dropdownContent.style.display === "flex") {
+    if (providerDropdownContent.style.display === "flex") {
         // hide the dropdown
-        dropdownContent.style.display = "none";
+        providerDropdownContent.style.display = "none";
     }
     else {
         // mark the selected item and unmark the rest
-        dropdownContent.querySelectorAll("span").forEach(
+        providerDropdownContent.querySelectorAll("span").forEach(
             function(providerItem) {
                 var providerName = providerItem.innerText;
                 if (providerName === osmProvider.name) {
@@ -295,7 +343,7 @@ function providerDropdownToggle() {
         );
         
         // show the dropdown
-        dropdownContent.style.display = "flex";
+        providerDropdownContent.style.display = "flex";
     }
 }
 function setProvider(provider) {
@@ -309,28 +357,35 @@ function setProvider(provider) {
     updateProviderButton();
 }
 function updateProviderButton() {
-    document.getElementById("provider-dropdown-button").innerHTML =
-            "Provider: " + osmProvider.shortName + " &gt;";
+    providerDropdownButton.innerHTML = "Provider: " + osmProvider.shortName + " &gt;";
 }
-function printDropdownToggle() {
-    var dropdownContent = document.getElementById("print-dropdown-content");
 
-    if (dropdownContent.style.display === "flex") {
-        // hide the dropdown
-        dropdownContent.style.display = "none";
+function print() {
+    var mode = printElement.toLowerCase();
+
+    var width = parseInt(printWidth.value);
+    if (width < 100 || printHeight > 99999) {
+        width = 0;
     }
-    else {
-        // show the dropdown
-        dropdownContent.style.display = "flex";
+
+    var height = parseInt(printHeight.value);
+    if (height < 100 || height > 99999) {
+        height = 0;
     }
-}
-function print(element) {
-    var printMode = element.toLowerCase();
-    if (printMode === "map") {
-        // TODO select map size
+
+    if (mode === "map") {
+        if (width === 0) {
+            width = 1600;
+        }
+        if (height === 0) {
+            height = 1200;
+        }
+
         window.open(
                 "index.html"
-                        + "?printMode=" + printMode
+                        + "?printMode=" + mode
+                        + "&printWidth=" + width
+                        + "&printHeight=" + height
                         + "&mapProvider=" + osmProvider.name
                         + "&bounds.northeast.lat=" + map.getBounds().getNorthEast().lat
                         + "&bounds.northeast.lng=" + map.getBounds().getNorthEast().lng
@@ -338,8 +393,24 @@ function print(element) {
                         + "&bounds.southwest.lng=" + map.getBounds().getSouthWest().lng,
                 "print-map");
     }
+    else if (mode === "elevationchart") {
+        if (width === 0) {
+            width = 1600;
+        }
+        if (height === 0) {
+            height = 400;
+        }
+
+        window.open(
+                "index.html"
+                        + "?printMode=" + mode
+                        + "&printWidth=" + width
+                        + "&printHeight=" + height,
+                "print-elevationchart");
+    }
 }
-function init() {
+
+function initFileSelect() {
     var file = document.getElementById("file");
     document.getElementById("file-trigger").addEventListener(
         "click",
@@ -348,8 +419,10 @@ function init() {
         }
     );
     file.addEventListener("change", handleFileSelect);
+}
 
-    document.getElementById("provider-dropdown-content").querySelectorAll("span").forEach(
+function initProviderDropdown() {
+    providerDropdownContent.querySelectorAll("span").forEach(
         function(providerItem) {
             providerItem.addEventListener(
                 "click",
@@ -360,27 +433,90 @@ function init() {
             );
         }
     );
-    document.getElementById("provider-dropdown-button").addEventListener("click", providerDropdownToggle);
+    providerDropdownButton.addEventListener("click", providerDropdownToggle);
     updateProviderButton();
+}
 
-    document.getElementById("print-dropdown-content").querySelectorAll("span").forEach(
-        function(providerItem) {
-            providerItem.addEventListener(
+function initPrintDropdown() {
+    printDropdownContent.querySelectorAll("span").forEach(
+        function(printItem) {
+            printItem.addEventListener(
                 "click",
                 function() {
-                    print(providerItem.innerText);
-                    printDropdownToggle();
+                    printElement = printItem.innerText.slice(0, -2).split(" ").join("");
+
+                    printDropdownContent.style.display = "none";
+                    printSizeDropdownContent.style.display = "flex";
                 }
             );
         }
     );
-    document.getElementById("print-dropdown-button").addEventListener("click", printDropdownToggle);
+    printSizeDropdownContent.querySelectorAll("span.size").forEach(
+        function(sizeItem) {
+            sizeItem.addEventListener(
+                "click",
+                function() {
+                    var size = sizeItem.innerText;
+                    var width, height;
+                    switch (size) {
+                        case "Small":
+                            width = 800, height = 600;
+                            break;
+                        case "Medium":
+                            width = 1600, height = 1200;
+                            break;
+                        case "Large":
+                            width = 3200, height = 1600;
+                            break;
+                    }
+                    if (printElement === "Elevationchart") {
+                        height = height / 3 ;
+                    }
+                    printWidth.value = width;
+                    printHeight.value = height;
+                }
+            );
+        }
+    );
+    printSizeDropdownContent.querySelectorAll("span.action").forEach(
+        function(action) {
+            action.addEventListener("click", function() {
+                print();
+                printSizeDropdownContent.style.display = "none";
+            });
+        }
+    );
+    printDropdownButton.addEventListener("click", function() {
+        var isL1Visible = printDropdownContent.style.display == "flex";
+        var isL2Visible = printSizeDropdownContent.style.display == "flex";
 
-    if (printMode !== "map") {
-        document.querySelector(".controls").style.display = "flex";
-    }
+        if (isL1Visible) {
+            printDropdownContent.style.display = "none";
+        }
+        else if (isL2Visible) {
+            printSizeDropdownContent.style.display = "none";
+        }
+        else if (isL1Visible == false && isL2Visible == false) {
+            printDropdownContent.style.display = "flex";
+        }
+    });
+}
 
-    // TODO load track from sessionStorage and show it on map
+
+function init() {
+    providerDropdownButton = document.getElementById("provider-dropdown-button");
+    providerDropdownContent = document.getElementById("provider-dropdown-content");
+
+    printDropdownButton = document.getElementById("print-dropdown-button");
+    printDropdownContent = document.getElementById("print-dropdown-content");
+    printSizeDropdownContent = document.getElementById("print-size-dropdown-content");
+
+    printWidth = document.getElementById("printWidth");
+    printHeight = document.getElementById("printHeight");
+
+    initFileSelect();
+    initProviderDropdown();
+    initPrintDropdown();
 }
 
 function handleFileSelect(event) {
