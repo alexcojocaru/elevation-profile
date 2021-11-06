@@ -10,6 +10,7 @@
             width:100%;
             padding:0;
             margin:0;
+            font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
         }
         .controls {
             position: absolute;
@@ -48,6 +49,9 @@
             padding: 3px 5px;
             margin: 2px;
             cursor: pointer;
+        }
+        .disabled {
+            color: #777 !important;
         }
         .dropdown-content span.hover:hover, .dropdown-item-selected {
             background-color: #ddd;
@@ -94,15 +98,15 @@
         <div class="dropdown">
             <div id="print-dropdown-button" class="button">Print &gt;</div>
             <div id="print-dropdown-content" class="dropdown-content">
-                <span class="hover">Map &gt;</span>
-                <span class="hover">Elevation chart &gt;</span>
+                <span id="print-dropdown-map-button" class="hover">Map &gt;</span>
+                <span id="print-dropdown-elevation-button" class="hover">Elevation chart &gt;</span>
             </div>
             <div id="print-size-dropdown-content" class="dropdown-content">
                 <span class="size hover">Small</span>
                 <span class="size hover">Medium</span>
                 <span class="size hover">Large</span>
-                <span>width: <input type="text" value="1600" pattern="[0-9]{3,5}" size="5" minlength="3" maxlength="5" id="printWidth" /> px</span>
-                <span>height: <input type="text" value="1200" pattern="[0-9]{3,5}" size="5" minlength="3" maxlength="5" id="printHeight" /> px</span>
+                <span>width: <input type="text" value="" pattern="[0-9]{3,5}" size="5" minlength="3" maxlength="5" id="printWidth" /> px</span>
+                <span>height: <input type="text" value="" pattern="[0-9]{3,5}" size="5" minlength="3" maxlength="5" id="printHeight" /> px</span>
                 <span class="action hover">Go</span>
             </div>
         </div>

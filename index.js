@@ -84,6 +84,8 @@ var providerDropdownContent;
 
 var printDropdownButton;
 var printDropdownContent;
+var printDropdownMapButton;
+var printDropdownElevationButton;
 var printSizeDropdownContent;
 var printWidth;
 var printHeight;
@@ -106,6 +108,9 @@ function getQueryParam(param, defaultValue) {
 // check if we are in "print" mode (i.e. show only the map or the elevation chart, with no controls)
 var printMode = getQueryParam("printMode");
 var mapProvider = getQueryParam("mapProvider", "openstreetmap.fr");
+
+var geojson = [];
+var elevationFeatures = [];
 
 
 // init map
@@ -156,20 +161,21 @@ if (printMode === "map") {
     mapNode.style.height = height + "px";
     map.invalidateSize();
 
-    var geojsonAsJson = sessionStorage.getItem("geojson");
-    if (geojsonAsJson) {
-        changeData(JSON.parse(geojsonAsJson));
+    if (window.name) {
+        geojson = JSON.parse(window.name);
+        changeData();
     }
 }
 else if (printMode === "elevationchart") {
     var width = parseInt(getQueryParam("printWidth", "1600"));
-    var height = parseInt(getQueryParam("printHeight", "400"));
+    var height = parseInt(getQueryParam("printHeight", "500"));
 
     hg = L.control.heightgraph(heightgraphOptions);
     hg.addTo(map);
-    var elevationFeaturesAsJson = sessionStorage.getItem("elevationFeatures");
-    if (elevationFeaturesAsJson) {
-        hg.addData(JSON.parse(elevationFeaturesAsJson));
+
+    if (window.name) {
+        elevationFeatures = JSON.parse(window.name);
+        hg.addData(elevationFeatures);
     }
     else {
         hg.addData([]);
@@ -194,23 +200,18 @@ else {
     // initialize with empty data
     hg.addData([]);
 
-    hg.resize({width:1000,height:300})
+    hg.resize({width:1000, height:300});
 
     var onRoute = function(event) {
-        hg.mapMousemoveHandler(event, {showMapMarker:true})
+        hg.mapMousemoveHandler(event, {showMapMarker:true});
     }
     var outRoute = function(event) {
-        hg.mapMouseoutHandler(1000)
+        hg.mapMouseoutHandler(1000);
     }
-
-    sessionStorage.clear();
 }
 
 
-function changeData(geojson) {
-    // save to session storage
-    sessionStorage.setItem("geojson", JSON.stringify(geojson));
-   
+function changeData() {
     displayGroup.clearLayers();
 
     if (geojson.length !== 0) {
@@ -235,7 +236,16 @@ function changeData(geojson) {
         map.fitBounds(newBounds);
     }
 
-    changeHeightgraphData(geojson);
+    if (geojson.length === 0) {
+        printDropdownMapButton.title = "Upload a track before printing";
+        printDropdownMapButton.classList.add("disabled");
+    }
+    else {
+        printDropdownMapButton.title = "";
+        printDropdownMapButton.classList.remove("disabled");
+    }
+
+    changeHeightgraphData();
 }
 function buildLatLng(coords) {
     if (coords.length < 2 || coords.length > 3) {
@@ -249,9 +259,7 @@ function buildLatLng(coords) {
             coords.length === 3 ? coords[2] : undefined);
     }
 }
-function changeHeightgraphData(geojson) {
-    var elevationFeatures;
-
+function changeHeightgraphData() {
     if (geojson.length !== 0) {
         var latLngs = [];
         geojson.features.forEach(function(feature) {
@@ -287,8 +295,14 @@ function changeHeightgraphData(geojson) {
         hg._resetDrag();
     }
 
-    // save to session storage
-    sessionStorage.setItem("elevationFeatures", JSON.stringify(elevationFeatures));
+    if (elevationFeatures.length === 0) {
+        printDropdownElevationButton.title = "Upload a track before printing";
+        printDropdownElevationButton.classList.add("disabled");
+    }
+    else {
+        printDropdownElevationButton.title = "";
+        printDropdownElevationButton.classList.remove("disabled");
+    }
 
     hg.addData(elevationFeatures);
 }
@@ -315,8 +329,8 @@ function handleFileContent(extension, content) {
 
     try {
         var doc = parser.parseFromString(content, "application/xml");
-        var geojson = f(doc);
-        changeData(geojson);
+        geojson = f(doc);
+        changeData();
     }
     catch (e) {
         console.log("ERROR: Cannot handle file content as GeoJSON.", e);
@@ -391,14 +405,20 @@ function print() {
                         + "&bounds.northeast.lng=" + map.getBounds().getNorthEast().lng
                         + "&bounds.southwest.lat=" + map.getBounds().getSouthWest().lat
                         + "&bounds.southwest.lng=" + map.getBounds().getSouthWest().lng,
-                "print-map");
+                // pass the geojson via the windowName property;
+                // fetching it from the new window via window.opener doesn't work in local
+                // due to security restrictions;
+                // passing it via sessionStorage has this weird side effect that
+                // uploading a new track and reopening the window will not update the content
+                // (i.e. the sessionStorage in the new window does not update)
+                JSON.stringify(geojson));
     }
     else if (mode === "elevationchart") {
         if (width === 0) {
             width = 1600;
         }
         if (height === 0) {
-            height = 400;
+            height = 500;
         }
 
         window.open(
@@ -406,7 +426,9 @@ function print() {
                         + "?printMode=" + mode
                         + "&printWidth=" + width
                         + "&printHeight=" + height,
-                "print-elevationchart");
+                // see comments above on opening the map in a new window
+                // for why passing the elevation features via windowName
+                JSON.stringify(elevationFeatures));
     }
 }
 
@@ -438,15 +460,36 @@ function initProviderDropdown() {
 }
 
 function initPrintDropdown() {
-    printDropdownContent.querySelectorAll("span").forEach(
+    [printDropdownMapButton, printDropdownElevationButton].forEach(
         function(printItem) {
+            printItem.title = "Upload a track before printing";
+            printItem.classList.add("disabled");
+
             printItem.addEventListener(
                 "click",
                 function() {
+                    if (printItem === printDropdownMapButton && geojson.length === 0) {
+                        return;
+                    }
+                    if (printItem === printDropdownElevationButton && elevationFeatures.length === 0) {
+                        return;
+                    }
+
+                    // remove the trailing ' >' from the text,
+                    // then removing the potential space between words ' '
                     printElement = printItem.innerText.slice(0, -2).split(" ").join("");
 
                     printDropdownContent.style.display = "none";
                     printSizeDropdownContent.style.display = "flex";
+
+                    if (printWidth.value === "" || printHeight.value === "") {
+                        if (printItem === printDropdownMapButton) {
+                            printWidth.value = "1600", printHeight.value = "1200";
+                        }
+                        else if (printItem === printDropdownElevationButton) {
+                            printWidth.value = "1600", printHeight.value = "500";
+                        }
+                    }
                 }
             );
         }
@@ -458,19 +501,33 @@ function initPrintDropdown() {
                 function() {
                     var size = sizeItem.innerText;
                     var width, height;
-                    switch (size) {
-                        case "Small":
-                            width = 800, height = 600;
-                            break;
-                        case "Medium":
-                            width = 1600, height = 1200;
-                            break;
-                        case "Large":
-                            width = 3200, height = 1600;
-                            break;
+                    if (printElement === "Map") {
+                        switch (size) {
+                            case "Small":
+                                width = 800, height = 600;
+                                break;
+                            case "Large":
+                                width = 3200, height = 2400;
+                                break;
+                            case "Medium":
+                            default:
+                                width = 1600, height = 1200;
+                                break;
+                        }
                     }
-                    if (printElement === "Elevationchart") {
-                        height = height / 3 ;
+                    else if (printElement === "Elevationchart") {
+                        switch (size) {
+                            case "Small":
+                                width = 800, height = 250;
+                                break;
+                            case "Large":
+                                width = 3200, height = 1000;
+                                break;
+                            case "Medium":
+                            default:
+                                width = 1600, height = 500;
+                                break;
+                        }
                     }
                     printWidth.value = width;
                     printHeight.value = height;
@@ -509,6 +566,8 @@ function init() {
 
     printDropdownButton = document.getElementById("print-dropdown-button");
     printDropdownContent = document.getElementById("print-dropdown-content");
+    printDropdownMapButton = document.getElementById("print-dropdown-map-button");
+    printDropdownElevationButton = document.getElementById("print-dropdown-elevation-button");
     printSizeDropdownContent = document.getElementById("print-size-dropdown-content");
 
     printWidth = document.getElementById("printWidth");

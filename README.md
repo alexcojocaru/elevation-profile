@@ -9,4 +9,10 @@ From there, you can print the map with the track on, or the elevation profile.
 Using the application
 ---
 The application is running at 
-https://alexcojocaru.github.io/elevation-profile/
+[https://alexcojocaru.github.io/elevation-profile/](https://alexcojocaru.github.io/elevation-profile/).
+
+Third-party libs
+---
+* [Heightgraph](https://github.com/nrenner/Leaflet.Heightgraph)
+* [geo-data-exchange](https://github.com/alexcojocaru/geo-data-exchange)
+
