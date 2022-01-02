@@ -112,6 +112,8 @@ var mapProvider = getQueryParam("mapProvider", "openstreetmap.fr");
 var geojson = [];
 var elevationFeatures = [];
 
+var heightgraphMarkers = [];
+
 
 // init map
 
@@ -190,6 +192,13 @@ else if (printMode === "elevationchart") {
    
     // hide the map
     mapNode.style.display = "none";
+
+    // restore the markers
+    var heightgraphMarkersString = getQueryParam("heightgraphMarkers", "");
+    if (heightgraphMarkersString) {
+        JSON.parse(atob(heightgraphMarkersString))
+            .forEach(marker => hg.addPermanentMarker(marker));
+    }
 }
 else {
     L.control.scale({ metric: true, imperial: false }).addTo(map);
@@ -425,7 +434,8 @@ function print() {
                 "index.html"
                         + "?printMode=" + mode
                         + "&printWidth=" + width
-                        + "&printHeight=" + height,
+                        + "&printHeight=" + height
+                        + "&heightgraphMarkers=" + btoa(JSON.stringify(heightgraphMarkers)),
                 // see comments above on opening the map in a new window
                 // for why passing the elevation features via windowName
                 JSON.stringify(elevationFeatures));
