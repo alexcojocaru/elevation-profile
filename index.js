@@ -175,7 +175,8 @@ else if (printMode === "elevationchart") {
     hg = L.control.heightgraph(heightgraphOptions);
     hg.addTo(map);
 
-    hg.resize({width:width,height:height})
+    hg.addData([]);
+    hg.resize({width:width,height:height});
     hg._expand();
 
     // move the heightgraph chart outside of the map node
@@ -190,9 +191,6 @@ else if (printMode === "elevationchart") {
         var chartWidth = getChartWidth();
         elevationFeatures = buildElevationFeatures(chartWidth);
         hg.addData(elevationFeatures);
-    }
-    else {
-        hg.addData([]);
     }
 
     // restore the markers
