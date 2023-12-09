@@ -179,19 +179,21 @@ else if (printMode === "elevationchart") {
     hg.resize({width:width,height:height});
     hg._expand();
 
-    // move the heightgraph chart outside of the map node
-    var hgNode = document.querySelector(".heightgraph-container");
-    document.body.appendChild(hgNode);
-   
-    // hide the map
-    mapNode.style.display = "none";
-
+    // after expanding the chart, so I can get its size/width;
+    // but before the DOM manipulations
     if (window.name) {
         geojson = JSON.parse(window.name);
         var chartWidth = getChartWidth();
         elevationFeatures = buildElevationFeatures(chartWidth);
         hg.addData(elevationFeatures);
     }
+
+    // move the heightgraph chart outside of the map node
+    var hgNode = document.querySelector(".heightgraph-container");
+    document.body.appendChild(hgNode);
+
+    // hide the map
+    mapNode.style.display = "none";
 
     // restore the markers
     var heightgraphMarkersString = getQueryParam("heightgraphMarkers", "");
