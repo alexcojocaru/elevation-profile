@@ -175,14 +175,6 @@ else if (printMode === "elevationchart") {
     hg = L.control.heightgraph(heightgraphOptions);
     hg.addTo(map);
 
-    if (window.name) {
-        elevationFeatures = JSON.parse(window.name);
-        hg.addData(elevationFeatures);
-    }
-    else {
-        hg.addData([]);
-    }
-
     hg.resize({width:width,height:height})
     hg._expand();
 
@@ -192,6 +184,16 @@ else if (printMode === "elevationchart") {
    
     // hide the map
     mapNode.style.display = "none";
+
+    if (window.name) {
+        geojson = JSON.parse(window.name);
+        var chartWidth = getChartWidth();
+        elevationFeatures = buildElevationFeatures(chartWidth);
+        hg.addData(elevationFeatures);
+    }
+    else {
+        hg.addData([]);
+    }
 
     // restore the markers
     var heightgraphMarkersString = getQueryParam("heightgraphMarkers", "");
@@ -268,34 +270,61 @@ function buildLatLng(coords) {
             coords.length === 3 ? coords[2] : undefined);
     }
 }
-function changeHeightgraphData() {
-    if (geojson.length !== 0) {
-        var latLngs = [];
-        geojson.features.forEach(function(feature) {
-            if (feature.geometry.type === "MultiLineString") {
-                feature.geometry.coordinates.forEach(function(lineString) {
-                    lineString.forEach(function(coord) {
-                        var latLng = buildLatLng(coord);
-                        if (latLng !== undefined) {
-                            latLngs.push(latLng);
-                        }
-                    });
-                });
+function getChartWidth() {
+    var hgWidth;
+    if (document.getElementsByClassName("heightgraph-container").length > 0) {
+        var hgElement = document.getElementsByClassName("heightgraph-container")[0];
+        if (hgElement.getElementsByTagName("g").length > 0) {
+            hgGElement = hgElement.getElementsByTagName("g")[0];
+            if (hgGElement.getElementsByClassName("grid").length > 1) {
+                hgGRectElement = hgGElement.getElementsByClassName("grid")[1];
+                hgWidth = hgGRectElement.getBoundingClientRect().width;
             }
-            else if (feature.geometry.type === "LineString") {
-                feature.geometry.coordinates.forEach(function(coord) {
+        }
+    }
+    return hgWidth;
+}
+function buildElevationFeatures(chartWidth) {
+    var latLngs = [];
+    geojson.features.forEach(function(feature) {
+        if (feature.geometry.type === "MultiLineString") {
+            feature.geometry.coordinates.forEach(function(lineString) {
+                lineString.forEach(function(coord) {
                     var latLng = buildLatLng(coord);
                     if (latLng !== undefined) {
                         latLngs.push(latLng);
                     }
                 });
+            });
+        }
+        else if (feature.geometry.type === "LineString") {
+            feature.geometry.coordinates.forEach(function(coord) {
+                var latLng = buildLatLng(coord);
+                if (latLng !== undefined) {
+                    latLngs.push(latLng);
+                }
+            });
+        }
+    });
+    return geoDataExchange.buildGeojsonFeatures(
+            latLngs,
+            {
+                interpolateElevation: true,
+                normalize: true,
+                chartWidthInPixels: chartWidth
             }
-        });
-        elevationFeatures = geoDataExchange.buildGeojsonFeatures(latLngs);
+    );
+}
+function changeHeightgraphData() {
+    if (geojson.length !== 0) {
 
         if (hg._showState !== true) {
             hg._expand();
         }
+
+        // after expanding heightgraph, so I can get its width
+        var chartWidth = getChartWidth();
+        elevationFeatures = buildElevationFeatures(chartWidth);
     }
     else {
         elevationFeatures = [];
@@ -437,8 +466,10 @@ function print() {
                         + "&printHeight=" + height
                         + "&heightgraphMarkers=" + btoa(JSON.stringify(heightgraphMarkers)),
                 // see comments above on opening the map in a new window
-                // for why passing the elevation features via windowName
-                JSON.stringify(elevationFeatures));
+                // for why passing the geojson via windowName;
+                // not passing the elevation features, before I need to rebuild them
+                // for the new chart size/width
+                JSON.stringify(geojson));
     }
 }
 

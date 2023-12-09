@@ -13,7 +13,23 @@
         // without an elevation/altitude coordinate;
         // if set to true, the elevation of these points will be interpolated
         // from the adjacent points which have it
-        interpolateElevation: false
+        interpolateElevation: false,
+
+        // whether or not to smooth out the elevation coordinates;
+        // if the gradients change too often, the chart will be very busy;
+        // normalizing the gradients result in less often changes, hence a less jagged chart
+        normalize: false,
+
+        // the width (in pixels) of the chart element; this is used to calculate the min length
+        // of each feature (i.e. list of point with the same gradient), so that there isn't
+        // an excessive/ number of features on the chart (which would make it look very busy);
+        // this is applicable only if the normalization is enabled
+// TODO - pass the more accurate value in elevation-profile & brouter
+        chartWidthInPixels: 1600,
+
+        // the min width (in pixels) of each feature (i.e. list of points with the same gradient);
+        // this is applicable only if the normalization is enabled
+        minNormalizationDistanceInPixels: 5
     };
     exports.defaultOptions = defaultOptions;
 
@@ -58,11 +74,23 @@
     function buildGeojsonFeatures(latLngs, options) {
         var _options = typeof(options) === 'undefined' ? defaultOptions : options;
 
-        var interpolate = typeof(_options.interpolateElevation) === 'undefined'
-                ? defaultOptions.interpolateElevation
-                : _options.interpolateElevation;
+        var interpolate = _options.interpolateElevation || defaultOptions.interpolateElevation;
+        var normalize = _options.normalize || defaultOptions.normalize;
 
-        var features = _buildFeatures(latLngs, interpolate);
+        var minNormalizationDistance = 0;
+        if (normalize) {
+            var chartWidthInPixels =
+                    _options.chartWidthInPixels || defaultOptions.chartWidthInPixels;
+            var minNormalizationDistanceInPixels =
+                    _options.minNormalizationDistanceInPixels
+                            || defaultOptions.minNormalizationDistanceInPixels;
+
+            var trackLength = _calculateDistance(latLngs);
+            minNormalizationDistance =
+                    minNormalizationDistanceInPixels * trackLength / chartWidthInPixels;
+        }
+
+        var features = _buildFeatures(latLngs, interpolate, normalize, minNormalizationDistance);
 
         return [
             {
@@ -83,8 +111,10 @@
      *
      * @param {LatLng[]} latLngs - an array of LatLng objects, guaranteed not to be null
      * @param Boolean interpolate - whether to interpolate the altitude on points without it
+     * @param Boolean normalize - whether to normalize the gradients
+     * @param Number minNormalizationDistance - the min distance over which the gradient is constant
      */
-    function _buildFeatures(latLngs, interpolate) {
+    function _buildFeatures(latLngs, interpolate, normalize, minNormalizationDistance) {
         var features = [];
 
         if (latLngs.length === 0) {
@@ -104,28 +134,67 @@
             features.push(_buildFeature(points, _calculateGradient([]), interpolate));
         }
 
+        var startIndex = 0; // the index of the start point of the current feature
+        var previousStartIndex = 0; // the index of the start point of the previous feature
+        var length = _calculateDistance(
+            // need to consider all points (even those without alt)
+            // between previous and current
+            latLngs.slice(latLngAlts[0].index, latLngAlts[1].index + 1)
+        ); // the length of the current feature
         var previousGradient = _calculateGradient(latLngAlts.slice(0, 2).map((lla) => lla.point));
-        var startIndex = 0;
+
         for (var i = 2; i < latLngAlts.length; i++) {
             var gradient = _calculateGradient(latLngAlts.slice(i-1, i+1).map((lla) => lla.point));
 
             if (previousGradient != gradient) {
-                var startOfFeature = latLngAlts[startIndex];
-                var endOfFeature = latLngAlts[i-1];
-                var points = latLngs.slice(startOfFeature.index, endOfFeature.index + 1);
-                features.push(_buildFeature(points, previousGradient, interpolate));
+                if (normalize === true && length < minNormalizationDistance) {
+                    previousGradient = _calculateGradient(
+                        latLngAlts.slice(startIndex, i+1).map((lla) => lla.point)
+                    );
+                }
+                else {
+                    var startOfFeature = latLngAlts[startIndex];
+                    var endOfFeature = latLngAlts[i-1];
+                    var points = latLngs.slice(startOfFeature.index, endOfFeature.index + 1);
+                    features.push(_buildFeature(points, previousGradient, interpolate));
 
-                previousGradient = gradient;
-                startIndex = i - 1;
+                    previousStartIndex = startIndex;
+                    startIndex = i - 1;
+                    length = 0;
+                    previousGradient = gradient;
+                }
             }
+
+            length += _calculateDistance(
+                // need to consider all points (even those without alt)
+                // between previous and current
+                latLngs.slice(latLngAlts[i-1].index, latLngAlts[i].index + 1)
+            );
         }
 
         var lastLatLngAlt = latLngAlts.slice(-1)[0];
 
-        // make a new feature until the last point with altitude
-        // (because the trailing points without altitude need a separate feature with 0 gradient)
         var points = latLngs.slice(latLngAlts[startIndex].index, lastLatLngAlt.index + 1);
-        features.push(_buildFeature(points, previousGradient, interpolate));
+        if (normalize === true && _calculateDistance(points) < minNormalizationDistance) {
+            // remove the last feature (if any)
+            features.pop();
+
+            // append these points to the previous feature
+            // (the trailing points without altitude need a separate feature with 0 gradient)
+            var jointPoints = latLngs.slice(
+                latLngAlts[previousStartIndex].index,
+                lastLatLngAlt.index + 1
+            );
+            var jointGradient = _calculateGradient(
+                latLngAlts.slice(previousStartIndex).map((lla) => lla.point)
+            );
+            features.push(_buildFeature(jointPoints, jointGradient, interpolate));
+        }
+        else {
+            // make a new feature until the last point with altitude
+            // (the trailing points without altitude need a separate feature with 0 gradient)
+            features.push(_buildFeature(points, previousGradient, interpolate));
+        }
 
         // make a new feature with the trailing points which don't have an altitude
         if (lastLatLngAlt.index < latLngs.length - 1) {
