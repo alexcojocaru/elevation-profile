@@ -309,7 +309,7 @@ function buildElevationFeatures(chartWidth) {
     return geoDataExchange.buildGeojsonFeatures(
             latLngs,
             {
-                interpolateElevation: true,
+                interpolateElevation: false,
                 normalize: true,
                 chartWidthInPixels: chartWidth
             }
