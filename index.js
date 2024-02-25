@@ -418,13 +418,13 @@ function hgCreateLegend(mode) {
         // then, keep only the range relevant to the current profile
         // (e.g. if min gradient of profile is -6, remove -16 and -15 from range)
         for (var i = 0; i < simplifiedLegend.length; i++) {
-            if (simplifiedLegend[i] > minGradient) {
+            if (simplifiedLegend[i].type > minGradient) {
                 simplifiedLegend.splice(0, i - 1);
                 break;
             }
         }
         for (var i = simplifiedLegend.length - 1; i > -1; i--) {
-            if (simplifiedLegend[i] < maxGradient) {
+            if (simplifiedLegend[i].type < maxGradient) {
                 simplifiedLegend.splice(i + 2);
                 break;
             }
