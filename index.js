@@ -1,49 +1,175 @@
 var heightgraphOptions = {
     mappings: {
+        // generate gradient palette: https://coolors.co/gradient-palette/ffcc99-ad0f0c?number=17
         gradient: {
+            /*
+               This gradient palette is twice as aggressive/intense as the one currently in use:
+                #028306
+                #12880F
+                #228C18
+                #319122
+                #41952B
+                #519A34
+                #619E3D
+                #71A346
+                #81A850
+                #90AC59
+                #A0B162
+                #B0B56B
+                #C0BA74
+                #D0BE7D
+                #DFC387
+                #EFC790
+                #FFCC99
+                #FAC090
+                #F5B487
+                #F0A97F
+                #EB9D76
+                #E5916D
+                #E08564
+                #DB795B
+                #D66E53
+                #D1624A
+                #CC5641
+                #C74A38
+                #C23E2F
+                #BC3226
+                #B7271E
+                #B21B15
+                #AD0F0C
+             */
+
+            "-16": {
+                text: "< -15%",
+                color: "#81A850"
+            },
+            "-15": {
+                text: "-15%",
+                color: "#89AA55"
+            },
+            "-14": {
+                text: "-14%",
+                color: "#91AD59"
+            },
+            "-13": {
+                text: "-13%",
+                color: "#99AF5E"
+            },
+            "-12": {
+                text: "-12%",
+                color: "#A1B162"
+            },
+            "-11": {
+                text: "-11%",
+                color: "#A8B367"
+            },
+            "-10": {
+                text: "-10%",
+                color: "#B0B66B"
+            },
+            "-9": {
+                text: "-9%",
+                color: "#B8B870"
+            },
+            "-8": {
+                text: "-8%",
+                color: "#C0BA75"
+            },
+            "-7": {
+                text: "-7%",
+                color: "#C8BC79"
+            },
+            "-6": {
+                text: "-6%",
+                color: "#D0BF7E"
+            },
             "-5": {
-                text: "< -16%",
-                color: "#028306"
+                text: "-5%",
+                color: "#D8C182"
             },
             "-4": {
-                text: "-10..-15%",
-                color: "#2AA12E"
+                text: "-4%",
+                color: "#E0C387"
             },
             "-3": {
-                text: "-7..-9%",
-                color: "#53BF56"
+                text: "-3%",
+                color: "#E7C58B"
             },
             "-2": {
-                text: "-4..-6%",
-                color: "#7BDD7E"
+                text: "-2%",
+                color: "#EFC890"
             },
             "-1": {
-                text: "-1..-3%",
-                color: "#A4FBA6"
+                text: "-1%",
+                color: "#F7CA94"
             },
             "0": {
                 text: "0%",
-                color: "#ffcc99"
+                color: "#FFCC99"
             },
             "1": {
-                text: "1..3%",
-                color: "#F29898"
+                text: "1%",
+                color: "#FCC695"
             },
             "2": {
-                text: "4..6%",
-                color: "#E07575"
+                text: "2%",
+                color: "#FAC090"
             },
             "3": {
-                text: "7..9%",
-                color: "#CF5352"
+                text: "3%",
+                color: "#F7BA8C"
             },
             "4": {
-                text: "10..15%",
-                color: "#BE312F"
+                text: "4%",
+                color: "#F5B588"
             },
             "5": {
-                text: "> 16%",
-                color: "#AD0F0C"
+                text: "5%",
+                color: "#F2AF83"
+            },
+            "6": {
+                text: "6%",
+                color: "#F0A97F"
+            },
+            "7": {
+                text: "7%",
+                color: "#EDA37A"
+            },
+            "8": {
+                text: "8%",
+                color: "#EB9D76"
+            },
+            "9": {
+                text: "9%",
+                color: "#E89772"
+            },
+            "10": {
+                text: "10%",
+                color: "#E5916D"
+            },
+            "11": {
+                text: "11%",
+                color: "#E38B69"
+            },
+            "12": {
+                text: "12%",
+                color: "#E08665"
+            },
+            "13": {
+                text: "13%",
+                color: "#DE8060"
+            },
+            "14": {
+                text: "14%",
+                color: "#DB7A5C"
+            },
+            "15": {
+                text: "15%",
+                color: "#D97457"
+            },
+            "16": {
+                text: "> 15%",
+                color: "#D66E53"
             }
         }
     },
@@ -173,6 +299,7 @@ else if (printMode === "elevationchart") {
     var height = parseInt(getQueryParam("printHeight", "500"));
 
     hg = L.control.heightgraph(heightgraphOptions);
+    hg._createLegend = hgCreateLegend;
     hg.addTo(map);
 
     hg.addData([]);
@@ -186,11 +313,23 @@ else if (printMode === "elevationchart") {
         var chartWidth = getChartWidth();
         elevationFeatures = buildElevationFeatures(chartWidth);
         hg.addData(elevationFeatures);
+
+        var hgLegend = document.querySelector(".legend-container");
+        hgLegend.style.removeProperty("position");
+        hgLegend.style.removeProperty("bottom");
+        hgLegend.style.removeProperty("left");
+        hgLegend.style.setProperty("margin-top", "-35px");
+        hgLegend.style.setProperty("margin-left", "10px");
+        hgLegend.style.setProperty("z-index", "10");
     }
 
     // move the heightgraph chart outside of the map node
     var hgNode = document.querySelector(".heightgraph-container");
     document.body.appendChild(hgNode);
+
+    // move the heightgraph legend outside of the map node
+    var hgLegend = document.querySelector(".legend-container");
+    document.body.appendChild(hgLegend);
 
     // hide the map
     mapNode.style.display = "none";
@@ -207,7 +346,9 @@ else {
     document.querySelector(".controls").style.display = "flex";
 
     hg = L.control.heightgraph(heightgraphOptions);
+    hg._createLegend = hgCreateLegend;
     hg.addTo(map);
+
     // initialize with empty data
     hg.addData([]);
 
@@ -221,6 +362,70 @@ else {
     }
 }
 
+function hgCreateLegend(mode) {
+
+    // keep only the more significant gradients
+    if (this._categories.length > 0) {
+        this._categories[this.options.selectedAttributeIdx].legend = [
+            {
+                type: -16,
+                text: heightgraphOptions.mappings.gradient["-16"].text,
+                color: heightgraphOptions.mappings.gradient["-16"].color
+            },
+            {
+                type: -10,
+                text: heightgraphOptions.mappings.gradient["-10"].text,
+                color: heightgraphOptions.mappings.gradient["-10"].color
+            },
+            {
+                type: -5,
+                text: heightgraphOptions.mappings.gradient["-5"].text,
+                color: heightgraphOptions.mappings.gradient["-5"].color
+            },
+            {
+                type: 0,
+                text: heightgraphOptions.mappings.gradient["0"].text,
+                color: heightgraphOptions.mappings.gradient["0"].color
+            },
+            {
+                type: 5,
+                text: heightgraphOptions.mappings.gradient["5"].text,
+                color: heightgraphOptions.mappings.gradient["5"].color
+            },
+            {
+                type: 10,
+                text: heightgraphOptions.mappings.gradient["10"].text,
+                color: heightgraphOptions.mappings.gradient["10"].color
+            },
+            {
+                type: 16,
+                text: heightgraphOptions.mappings.gradient["16"].text,
+                color: heightgraphOptions.mappings.gradient["16"].color
+            }
+        ];
+    }
+
+    var legend = L.DomUtil.create("div", "legend-container", this._container);
+    legend.style.setProperty("position", "absolute");
+    legend.style.setProperty("bottom", "10px");
+    legend.style.setProperty("left", "10px");
+
+    var legendLabel = L.DomUtil.create("span", "legend-hover legend-text", legend);
+    legendLabel.textContent = this._getTranslation("legend") + ":";
+
+    this._categories[this.options.selectedAttributeIdx].legend.forEach(l => {
+        var color = L.DomUtil.create("span", "legend-rect", legend);
+        color.style.setProperty("padding-left", "10px");
+        color.style.setProperty("padding-right", "3px");
+        color.style.setProperty("width", "6px");
+        color.style.setProperty("height", "6px");
+        color.style.setProperty("color", l.color);
+        color.innerHTML = "&#9632;";
+
+        var label = L.DomUtil.create("span", "legend-text", legend);
+        label.textContent = l.text;
+    });
+}
 
 function changeData() {
     displayGroup.clearLayers();
@@ -309,9 +514,8 @@ function buildElevationFeatures(chartWidth) {
     return geoDataExchange.buildGeojsonFeatures(
             latLngs,
             {
-                interpolateElevation: false,
-                normalize: true,
-                chartWidthInPixels: chartWidth
+                interpolateElevation: true,
+                normalize: false
             }
     );
 }
