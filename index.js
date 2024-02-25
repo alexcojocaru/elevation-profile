@@ -364,9 +364,21 @@ else {
 
 function hgCreateLegend(mode) {
 
-    // keep only the more significant gradients
     if (this._categories.length > 0) {
-        this._categories[this.options.selectedAttributeIdx].legend = [
+
+        // find the min and the max gradients for the current profile
+        var minProfileGradient = 16;
+        var maxProfileGradient = -16;
+        // this legend object has the profile gradients as keys; it was built by heightgraph
+        var allLegend = this._categories[this.options.selectedAttributeIdx].legend;
+        for (key in allLegend) {
+            var gradient = parseInt(key);
+            if (minGradient > gradient) { minGradient = gradient; }
+            if (maxGradient < gradient) { maxGradient = gradient; }
+        }
+
+        // define the simplified legend with all known gradients
+        var simplifiedLegend = [
             {
                 type: -16,
                 text: heightgraphOptions.mappings.gradient["-16"].text,
@@ -403,6 +415,22 @@ function hgCreateLegend(mode) {
                 color: heightgraphOptions.mappings.gradient["16"].color
             }
         ];
+        // then, keep only the range relevant to the current profile
+        // (e.g. if min gradient of profile is -6, remove -16 and -15 from range)
+        for (var i = 0; i < simplifiedLegend.length; i++) {
+            if (simplifiedLegend[i] > minGradient) {
+                simplifiedLegend.splice(0, i - 1);
+                break;
+            }
+        }
+        for (var i = simplifiedLegend.length - 1; i > -1; i--) {
+            if (simplifiedLegend[i] < maxGradient) {
+                simplifiedLegend.splice(i + 2);
+                break;
+            }
+        }
+
+        this._categories[this.options.selectedAttributeIdx].legend = simplifiedLegend;
     }
 
     var legend = L.DomUtil.create("div", "legend-container", this._container);
