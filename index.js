@@ -433,6 +433,11 @@ function hgCreateLegend(mode) {
         this._categories[this.options.selectedAttributeIdx].legend = simplifiedLegend;
     }
 
+    var existingLegend = document.querySelector(".legend-container");
+    if (existingLegend !== null) {
+        existingLegend.remove();
+    }
+
     var legend = L.DomUtil.create("div", "legend-container", this._container);
     legend.style.setProperty("position", "absolute");
     legend.style.setProperty("bottom", "10px");
