@@ -367,8 +367,8 @@ function hgCreateLegend(mode) {
     if (this._categories.length > 0) {
 
         // find the min and the max gradients for the current profile
-        var minProfileGradient = 16;
-        var maxProfileGradient = -16;
+        var minGradient = 16;
+        var maxGradient = -16;
         // this legend object has the profile gradients as keys; it was built by heightgraph
         var allLegend = this._categories[this.options.selectedAttributeIdx].legend;
         for (key in allLegend) {
